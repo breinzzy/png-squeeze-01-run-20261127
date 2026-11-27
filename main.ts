@@ -1164,7 +1164,7 @@ async function bestIdat(data, id) {
   // v12: zopfli on every stream — 2 iterations, except i002/i007 (the
   // slowest) which get 1 iteration. Falls back to the DP / zlib9 below.
   const useZopfli = true;
-  if (useZoplfi) {
+  if (useZopfli) {
     try {
       const iters = (id === 'i002' || id === 'i007') ? 1 : 2;
       const w = await zopfliZlib(data, { numiterations: iters });
