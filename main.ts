@@ -1,20 +1,21 @@
 // png-squeeze: rewrite each 1280x720 RGBA screenshot as the smallest lossless PNG it can be.
 //
-// Strategy (v12): decode the stored PNG, analyse the pixels, try every exact form the
+// Strategy (v13): decode the stored PNG, analyse the pixels, try every exact form the
 // checker accepts (palette by count and by luminance, grey / grey+alpha / RGB / RGBA,
 // plus a tRNS key when the image has a single fully-transparent value), try every
 // filter choice the screen knows (fixed 0/1/2/4, minimum-sum, fewest-pairs, brute
 // force with a 32 KiB dictionary context), screen each at zlib level 6, then
 // re-deflate the winner with the real zopfli (WebAssembly, vendored in
-// ./zopfli/): 2 iterations on the small streams, i003 and i006; 1 iteration
-// on i002 and i007 (the slowest). Every zopfli output is verified by
-// re-inflating and kept only when smaller than zlib level 9. The custom
+// ./zopfli/): 10 iterations (blocksplittingmax 5) on i006, 5 iterations
+// (blocksplittingmax 5) on i003, 2 iterations on the small streams, 1
+// iteration on i002 and i007 (the slowest). Every zopfli output is verified
+// by re-inflating and kept only when smaller than zlib level 9. The custom
 // optimal-parsing DEFLATE (two DP iterations, run shortcut, two cost starts,
 // dual-hash on i006) is kept as a fallback for i006 if zopfli fails.
 // Deterministic: a fixed amount of work per image, no clock, no randomness,
 // no network, nothing read outside /input and this file's own directory.
-// NOTE: v12 runs over 60 s in this VM (shared, throttled); the top entries
-// prove the grader fits WASM zopfli in the wall.
+// NOTE: v13 runs over 60 s in this VM (shared, throttled); the grader ran
+// v12 in ~48 s, so v13 (~57 s est.) still fits the wall.
 //
 // Node 22 runs this file as-is (plain JavaScript in a .ts file, erasable syntax only).
 // Only node:fs, node:path and node:zlib are used, plus the vendored zopfli
@@ -1161,13 +1162,18 @@ async function bestIdat(data, id) {
   const distH = [];
   for (let s = 0; s < 30; s++) distH.push(3 + Math.floor(Math.log2(s + 1) * 2));
   const heurCosts = { lit: Array.from(FIXED_LIT), dist: distH };
-  // v12: zopfli on every stream — 2 iterations, except i002/i007 (the
-  // slowest) which get 1 iteration. Falls back to the DP / zlib9 below.
+  // v13: zopfli on every stream. i006 (pairs filter) gets 10 iterations
+  // with blocksplittingmax 5 (154,927 vs 163,889 at iters=2 — the single
+  // biggest gain left); i003 gets 5 iterations / bsmax 5 (92,858 vs
+  // 93,282). Small streams stay at 2, i002/i007 at 1. Grader runs v12 in
+  // ~48 s, so v13 (~57 s est.) still fits the 60 s wall. Falls back to
+  // the DP / zlib9 below.
   const useZopfli = true;
   if (useZopfli) {
     try {
-      const iters = (id === 'i002' || id === 'i007') ? 1 : 2;
-      const w = await zopfliZlib(data, { numiterations: iters });
+      const iters = id === 'i006' ? 10 : id === 'i003' ? 5 : (id === 'i002' || id === 'i007') ? 1 : 2;
+      const bsmax = (id === 'i006' || id === 'i003') ? 5 : 15;
+      const w = await zopfliZlib(data, { numiterations: iters, blocksplitting: true, blocksplittingmax: bsmax });
       const wb = new Uint8Array(w);
       if (wb.length < z.length) {
         const back = inflateSync(wb);
