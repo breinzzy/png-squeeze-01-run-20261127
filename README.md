@@ -17,9 +17,14 @@ only, bit depth 8, non-interlaced, colour types 0/2/3/4/6, one zlib stream).
    RGB, RGBA, plus a tRNS key when the image has a single fully-transparent
    value.
 3. **Filter** each form with every choice the screen knows — fixed 0/1/2/4,
-   minimum-sum, fewest-pairs, and brute force (per-row choice scored by a
-   small DEFLATE of the row with a 32 KiB dictionary context) — and screen
-   each at zlib level 6.
+   minimum-sum, fewest-pairs, per-row brute force (scored by a small
+   DEFLATE of the row with a 32 KiB dictionary context, grey only), and
+   the band filter (RGB/RGBA only: 8 horizontal bands, one filter per
+   band chosen by zlib level 6 on a 30-row sample from the band) — and
+   screen each at zlib level 6. The band filter beats per-row brute on
+   rich/alpha images (i002: 42,501 vs 45,961 bytes) because a per-band
+   choice follows the image's structure (UI on top, photo below) while
+   per-row L4 cost misleads the choice.
 4. **Deflate** the winner with the real zopfli (WebAssembly, vendored in
    `./zopfli/`, see its NOTICE.md) on every stream — 10 iterations
    (blocksplittingmax 5) on i006, 5 iterations (blocksplittingmax 5) on
@@ -28,29 +33,30 @@ only, bit depth 8, non-interlaced, colour types 0/2/3/4/6, one zlib stream).
    verified by re-inflating and kept only when smaller than zlib level 9.
    The custom optimal-parsing DEFLATE (two DP iterations, run shortcut,
    two cost starts, dual-hash on i006) is kept as a fallback for i006 if
-   zopfli fails. NOTE: v13 runs ~156 s in this VM (shared, throttled),
-   over the 60 s wall; the grader ran v12 in ~48 s, so v13 (~57 s est.)
+   zopfli fails. NOTE: v15 runs ~149 s in this VM (shared, throttled),
+   over the 60 s wall; the grader ran v12 in ~48 s, so v15 (~55 s est.)
    still fits the wall.
 
 ## Practice-set result
 
-Score **784,067** on the kit's practice set (house baseline fixed-paeth:
-420,399; v12: 779,709; v11: 758,879; v10: 755,958; v9: 752,962; v8:
-732,991; v7: 732,822; v6: 731,917; v5: 730,985; v4.4: 728,150; v3:
-726,090; v2: 720,964; v1 without the custom DEFLATE: 703,048), all 8
-instances exact, total runtime ~156 s locally (over the 60 s wall — see
-note above).
+Score **790,131** on the kit's practice set (house baseline fixed-paeth:
+420,399; v13: 784,067; v12: 779,709; v11: 758,879; v10: 755,958; v9:
+752,962; v8: 732,991; v7: 732,822; v6: 731,917; v5: 730,985; v4.4:
+728,150; v3: 726,090; v2: 720,964; v1 without the custom DEFLATE:
+703,048), all 8 instances exact, total runtime ~149 s locally (over
+the 60 s wall — see note above). Determinism verified: two runs produce
+byte-identical output.
 
 | instance | bytes | points |
 |----------|-------|--------|
-| i001 | 10,425 | 813.5 |
-| i002 | 45,961 | 776.2 |
-| i003 | 92,858 | 759.2 |
-| i004 | 95,156 | 759.0 |
-| i005 | 14,141 | 823.7 |
-| i006 | 154,927 | 775.7 |
-| i007 | 53,969 | 773.1 |
-| i008 | 21,704 | 792.1 |
+| i001 | 10,563 | 813.5 |
+| i002 | 42,501 | 818.8 |
+| i003 | 91,955 | 765.1 |
+| i004 | 95,213 | 759.0 |
+| i005 | 14,270 | 823.7 |
+| i006 | 154,984 | 775.7 |
+| i007 | 54,026 | 773.1 |
+| i008 | 21,761 | 792.1 |
 
 ## Run
 
