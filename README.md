@@ -21,33 +21,34 @@ only, bit depth 8, non-interlaced, colour types 0/2/3/4/6, one zlib stream).
    small DEFLATE of the row with a 32 KiB dictionary context) — and screen
    each at zlib level 6.
 4. **Deflate** the winner with the real zopfli (WebAssembly, vendored in
-   `./zopfli/`, see its NOTICE.md) on every stream — 2 iterations on the
-   small filtered streams (≤ ~1.1 MB, the palette/grey ones), i003 and
-   i006; 1 iteration on i002 and i007 (the slowest) — verified by
-   re-inflating and kept only when smaller than zlib level 9. The custom
-   optimal-parsing DEFLATE (two DP iterations, run shortcut, two cost
-   starts, dual-hash on i006) is kept as a fallback for i006 if zopfli
-   fails. NOTE: v12 runs ~130 s in this VM (shared, throttled), over the
-   60 s wall; the top entries prove the grader fits WASM zopfli in the
-   wall.
+   `./zopfli/`, see its NOTICE.md) on every stream — 10 iterations
+   (blocksplittingmax 5) on i006, 5 iterations (blocksplittingmax 5) on
+   i003, 2 iterations on the small filtered streams (≤ ~1.1 MB, the
+   palette/grey ones); 1 iteration on i002 and i007 (the slowest) —
+   verified by re-inflating and kept only when smaller than zlib level 9.
+   The custom optimal-parsing DEFLATE (two DP iterations, run shortcut,
+   two cost starts, dual-hash on i006) is kept as a fallback for i006 if
+   zopfli fails. NOTE: v13 runs ~156 s in this VM (shared, throttled),
+   over the 60 s wall; the grader ran v12 in ~48 s, so v13 (~57 s est.)
+   still fits the wall.
 
 ## Practice-set result
 
-Score **779,709** on the kit's practice set (house baseline fixed-paeth:
-420,399; v11: 758,879; v10: 755,958; v9: 752,962; v8: 732,991; v7:
-732,822; v6: 731,917; v5: 730,985; v4.4: 728,150; v3: 726,090; v2:
-720,964; v1 without the custom DEFLATE: 703,048), all 8 instances
-exact, total runtime ~130 s locally (over the 60 s wall — see note
-above).
+Score **784,067** on the kit's practice set (house baseline fixed-paeth:
+420,399; v12: 779,709; v11: 758,879; v10: 755,958; v9: 752,962; v8:
+732,991; v7: 732,822; v6: 731,917; v5: 730,985; v4.4: 728,150; v3:
+726,090; v2: 720,964; v1 without the custom DEFLATE: 703,048), all 8
+instances exact, total runtime ~156 s locally (over the 60 s wall — see
+note above).
 
 | instance | bytes | points |
 |----------|-------|--------|
 | i001 | 10,425 | 813.5 |
 | i002 | 45,961 | 776.2 |
-| i003 | 93,282 | 756.6 |
+| i003 | 92,858 | 759.2 |
 | i004 | 95,156 | 759.0 |
 | i005 | 14,141 | 823.7 |
-| i006 | 163,889 | 743.5 |
+| i006 | 154,927 | 775.7 |
 | i007 | 53,969 | 773.1 |
 | i008 | 21,704 | 792.1 |
 
